@@ -160,6 +160,7 @@ commands:
       - custom_attach_workspace
       # Install Bazel pre-requisites that aren't in the preconfigured CircleCI Windows VM.
       - run: ./.circleci/windows-env.ps1
+      - run: git config --global url."https://github.com".insteadOf "ssh://git@github.com"
       - run:
           # Overwrite the yarn installed in the docker container with our own version.
           name: Overwrite yarn with our own version
@@ -176,7 +177,6 @@ commands:
       # Install @bazel/bazel globally and use that for the first run.
       # Workaround for https://github.com/bazelbuild/rules_nodejs/issues/894
       - run: yarn global add @bazel/bazel@$env:BAZEL_VERSION
-      - run: bazel info
 
   setup_circleci_bazel_config:
     description: Set up CircleCI bazel configuration on Linux
@@ -800,9 +800,20 @@ jobs:
   # Windows jobs
   # Docs: https://circleci.com/docs/2.0/hello-world-windows/
   test_win:
+    parameters:
+      force-windows-tests:
+        type: boolean
+        default: false
     executor: windows-executor
     steps:
       - setup_win
+      - unless:
+          condition: << parameters.force-windows-tests >>
+          steps:
+            - run:
+                command: node tools/ci-scripts/should-run-windows-ci.js $env:CIRCLE_PR_NUMBER
+      - run:
+          command: circleci-agent step halt
       - run:
           # Ran into a command parsing problem where `-browser:chromium-local` was converted to
           # `-browser: chromium-local` (a space was added) in https://circleci.com/gh/angular/angular/357511.
@@ -824,140 +835,12 @@ jobs:
           command: yarn circleci-win-ivy
           no_output_timeout: 45m
 
-
 workflows:
   version: 2
   default_workflow:
     jobs:
-      - setup:
-          filters:
-            branches:
-              ignore: g3
-      - lint:
-          requires:
-            - setup
-      - test:
-          requires:
-            - setup
-      - test_ivy_aot:
-          requires:
-            - setup
-      - build-npm-packages:
-          requires:
-            - setup
-      - build-ivy-npm-packages:
-          requires:
-            - setup
-      - legacy-misc-tests:
-          requires:
-            - build-npm-packages
-      - legacy-unit-tests-saucelabs:
-          requires:
-            - setup
-      - saucelabs_ivy:
-            requires:
-              - test_ivy_aot
-      - saucelabs_view_engine:
-          # This job is currently a PoC and a subset of `legacy-unit-tests-saucelabs`. Running on
-          # master only to avoid wasting resources.
-          # TODO: Run this job on all branches (including PRs) as soon as it is not a PoC and
-          # we can remove the legacy saucelabs job.
-          <<: *only_on_master
-          requires:
-            - setup
-      - test_aio:
-          requires:
-            - setup
-      - deploy_aio:
-          requires:
-            - test_aio
-      - test_aio_local:
-          requires:
-            - build-npm-packages
-      - test_aio_local:
-          name: test_aio_local_viewengine
-          viewengine: true
-          requires:
-            - build-npm-packages
-      - test_aio_tools:
-          requires:
-            - build-npm-packages
-      - test_docs_examples:
-          requires:
-            - build-npm-packages
-      - test_docs_examples:
-          name: test_docs_examples_ivy
-          ivy: true
-          requires:
-            - build-ivy-npm-packages
-      - aio_preview:
-          # Only run on PR builds. (There can be no previews for non-PR builds.)
-          <<: *only_on_pull_requests
-          requires:
-            - setup
-      - test_aio_preview:
-          requires:
-            - aio_preview
-      - integration_test:
-          requires:
-            - build-npm-packages
-      - publish_packages_as_artifacts:
-          requires:
-            - build-npm-packages
-      - publish_snapshot:
-          # Note: no filters on this job because we want it to run for all upstream branches
-          # We'd really like to filter out pull requests here, but not yet available:
-          # https://discuss.circleci.com/t/workflows-pull-request-filter/14396/4
-          # Instead, the job just exits immediately at the first step.
-          requires:
-            # Only publish if tests and integration tests pass
-            - test
-            - test_ivy_aot
-            - integration_test
-            - saucelabs_ivy
-            # Only publish if `aio`/`docs` tests using the locally built Angular packages pass
-            - test_aio_local
-            - test_aio_local_viewengine
-            - test_docs_examples
-            - test_docs_examples_ivy
-            # Get the artifacts to publish from the build-packages-dist job
-            # since the publishing script expects the legacy outputs layout.
-            - build-npm-packages
-            - build-ivy-npm-packages
-            - legacy-unit-tests-saucelabs
-            - legacy-misc-tests
-      - material-unit-tests:
-          requires:
-            - build-npm-packages
-      - test_zonejs:
-          requires:
-            - setup
-      # Windows Jobs
-      # These are very slow so we run them on non-PRs only for now.
-      # TODO: remove the filter when CircleCI makes Windows FS faster.
-      # The Windows jobs are only run after their non-windows counterparts finish successfully.
-      # This isn't strictly necessary as there is no artifact dependency, but helps economize
-      # CI resources by not attempting to build when we know should fail.
-      - test_win:
-          <<: *skip_on_pull_requests
-          requires:
-            - test
-      - test_ivy_aot_win:
-          <<: *skip_on_pull_requests
-          requires:
-            - test_ivy_aot
-
-  aio_monitoring:
-    jobs:
       - setup
-      - aio_monitoring_stable:
+      - test_win:
+          force-windows-tests: false
           requires:
-            - setup
-      - aio_monitoring_next:
-          requires:
-            - setup
-    triggers:
-      - schedule:
-          <<: *only_on_master
-          # Runs AIO monitoring jobs at 10:00AM every day.
-          cron: "0 10 * * *"
+              - setup

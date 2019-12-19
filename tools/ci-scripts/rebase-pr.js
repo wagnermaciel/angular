@@ -9,11 +9,11 @@
 /**
  * **Usage:**
  * ```
- * node rebase-pr <github-repository> <pull-request-number>
+ * node rebase-pr <pull-request-number>
  * ```
  * **Example:**
  * ```
- * node rebase-pr angular/angular 123
+ * node rebase-pr 123
  * ```
  *
  * Rebases the current branch on top of the GitHub PR target branch.
@@ -38,12 +38,12 @@
 
 // Imports
 const util = require('util');
-const https = require('https');
 const child_process = require('child_process');
 const exec = util.promisify(child_process.exec);
+const {determineTargetRefAndSha} = require('./get-pr-refs-and-sha');
 
 // CLI validation
-if (process.argv.length != 4) {
+if (process.argv.length != 3) {
   console.error(`This script requires the GitHub repository and PR number as arguments.`);
   console.error(`Example: node tools/rebase-pr.js angular/angular 123`);
   process.exitCode = 1;
@@ -58,9 +58,9 @@ _main(...process.argv.slice(2)).catch(err => {
 });
 
 // Helpers
-async function _main(repository, prNumber) {
-  console.log(`Getting refs and SHAs for PR ${prNumber} on ${repository}.`);
-  const target = await determineTargetRefAndSha(repository, prNumber);
+async function _main(prNumber) {
+  console.log(`Getting refs and SHAs for PR ${prNumber}.`);
+  const target = await determineTargetRefAndSha(prNumber);
   console.log(`Fetching target branch: ${target.baseRef}.`);
   await exec(`git fetch origin ${target.baseRef}`);
 
@@ -111,6 +111,7 @@ async function _main(repository, prNumber) {
   }
   console.log();
 
+  process.exit();
   // Rebase the PR.
   console.log(`Rebasing current branch on ${target.baseRef}.`);
   await exec(`git rebase origin/${target.baseRef}`);
@@ -118,55 +119,3 @@ async function _main(repository, prNumber) {
 
 }
 
-async function requestDataFromGithub(url) {
-  // GitHub requires a user agent: https://developer.github.com/v3/#user-agent-required
-  const options = {headers: {'User-Agent': 'angular'}};
-
-  return new Promise((resolve, reject) => {
-    https
-        .get(
-            url, options,
-            (res) => {
-              const {statusCode} = res;
-              const contentType = res.headers['content-type'];
-              let rawData = '';
-
-              res.on('data', (chunk) => { rawData += chunk; });
-              res.on('end', () => {
-                let error;
-                if (statusCode !== 200) {
-                  error = new Error(
-                      `Request Failed.\nStatus Code: ${statusCode}.\nResponse: ${rawData}`);
-                } else if (!/^application\/json/.test(contentType)) {
-                  error = new Error(
-                      'Invalid content-type.\n' +
-                      `Expected application/json but received ${contentType}`);
-                }
-
-                if (error) {
-                  reject(error);
-                  return;
-                }
-
-                try {
-                  resolve(JSON.parse(rawData));
-                } catch (e) {
-                  reject(e);
-                }
-              });
-            })
-        .on('error', (e) => { reject(e); });
-  });
-}
-
-async function determineTargetRefAndSha(repository, prNumber) {
-  const pullsUrl = `https://api.github.com/repos/${repository}/pulls/${prNumber}`;
-
-  const result = await requestDataFromGithub(pullsUrl);
-  return {
-    baseRef: result.base.ref,
-    baseSha: result.base.sha,
-    headRef: result.head.ref,
-    headSha: result.head.sha,
-  };
-}
