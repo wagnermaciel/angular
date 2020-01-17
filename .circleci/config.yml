@@ -120,25 +120,11 @@ commands:
       - attach_workspace:
           at: *workspace_location
 
-  # Overwrite the yarn installed in the docker container with our own version.
-  overwrite_yarn:
-    description: Overwrite yarn with our own version
-    steps:
-      - run:
-          name: Overwrite yarn
-          command: |
-            localYarnPath=`node ./.circleci/get-vendored-yarn-path.js`
-            sudo chmod a+x $localYarnPath
-            sudo ln -fs $localYarnPath /usr/local/bin/yarn
-      - run: node --version
-      - run: yarn --version
-
   # Initializes the CI environment by setting up common environment variables.
   init_environment:
     description: Initializing environment (setting up variables, overwriting Yarn)
     steps:
       - run: ./.circleci/env.sh
-      - overwrite_yarn
       - run:
           # Configure git as the CircleCI `checkout` command does.
           # This is needed because we only checkout on the setup job.
@@ -160,10 +146,6 @@ commands:
       - custom_attach_workspace
       # Install Bazel pre-requisites that aren't in the preconfigured CircleCI Windows VM.
       - run: ./.circleci/windows-env.ps1
-      - run:
-          # Overwrite the yarn installed in the docker container with our own version.
-          name: Overwrite yarn with our own version
-          command: ./.circleci/windows-yarn-setup.ps1
       - run: node --version
       - run: yarn --version
       - restore_cache:
@@ -663,16 +645,10 @@ jobs:
       - init_environment
       - run: setPublicVar_CI_STABLE_BRANCH
       - run:
-          name: Check out `aio/` and `third_party/github.com/yarnpkg/` from the stable branch
+          name: Check out `aio/` from the stable branch
           command: |
-            localYarnDir=third_party/github.com/yarnpkg/
-            # Remove the directory to ensure there will be only one version available (the one
-            # checked out from the stable branch below).
-            rm -rf $localYarnDir
             git fetch origin $CI_STABLE_BRANCH
-            git checkout --force origin/$CI_STABLE_BRANCH -- aio/ $localYarnDir
-        # Overwrite yarn again to use the version from the checked out branch.
-      - overwrite_yarn
+            git checkout --force origin/$CI_STABLE_BRANCH -- aio/
       - run:
           name: Run tests against https://angular.io/
           command: ./aio/scripts/test-production.sh https://angular.io/ $CI_AIO_MIN_PWA_SCORE
