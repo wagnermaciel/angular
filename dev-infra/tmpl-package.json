@@ -8,14 +8,27 @@
     "ng-dev": "./cli.js",
     "ts-circular-deps": "./ts-circular-dependencies/index.js"
   },
+  "dependencies": {
+    "node-uuid": "<from-root>",
+    "fs-extra": "<from-root>"
+  },
   "peerDependencies": {
+    "@angular/benchpress": "^0.1.0",
     "chalk": "<from-root>",
     "glob": "<from-root>",
     "minimatch": "<from-root>",
+    "protractor": "<from-root>",
+    "selenium-webdriver": "<from-root>",
     "shelljs": "<from-root>",
     "typescript": "<from-root>",
     "yaml": "<from-root>",
     "yargs": "<from-root>",
     "tslib": "<from-root>"
+  },
+  "bazelWorkspaces": {
+    "npm_dev_infra": {
+      "version": "0.0.0-PLACEHOLDER",
+      "rootPath": "."
+    }
   }
 }
