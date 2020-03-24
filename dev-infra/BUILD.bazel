@@ -32,10 +32,23 @@ genrule(
 pkg_npm(
     name = "npm_package",
     visibility = ["//visibility:public"],
+    srcs = [
+        "BUILD.bazel",
+        "//dev-infra/tools:files",
+    ],
+    substitutions = {
+        "//dev-infra/": "@npm_dev_infra//",
+        "//packages/benchpress": "@npm//@angular/benchpress",
+        "//packages/bazel/src:esm5.bzl": "@npm_angular_bazel//src:esm5.bzl",
+        "//packages/zone.js/dist:zone.js": "@npm//:node_modules/zone.js/dist/zone.js",
+        "//tools:defaults.bzl": "@npm_angular_bazel//:index.bzl",
+        "//packages/core": "@npm//@angular/core",
+    },
     deps = [
         ":cli",
         ":package-json",
         "//dev-infra/commit-message",
         "//dev-infra/ts-circular-dependencies",
+        "//dev-infra/benchmark/driver-utilities",
     ],
 )
