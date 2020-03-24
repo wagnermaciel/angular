@@ -405,18 +405,18 @@ export class LViewDebug {
     return toDebugNodes(tNode, lView);
   }
 
-  get tView() { return this._raw_lView[TVIEW]; }
-  get cleanup() { return this._raw_lView[CLEANUP]; }
+  get tView(): ITView { return this._raw_lView[TVIEW]; }
+  get cleanup(): any[]|null { return this._raw_lView[CLEANUP]; }
   get injector(): Injector|null { return this._raw_lView[INJECTOR]; }
   get rendererFactory(): RendererFactory3 { return this._raw_lView[RENDERER_FACTORY]; }
   get renderer(): Renderer3 { return this._raw_lView[RENDERER]; }
   get sanitizer(): Sanitizer|null { return this._raw_lView[SANITIZER]; }
-  get childHead() { return toDebug(this._raw_lView[CHILD_HEAD]); }
-  get next() { return toDebug(this._raw_lView[NEXT]); }
-  get childTail() { return toDebug(this._raw_lView[CHILD_TAIL]); }
-  get declarationView() { return toDebug(this._raw_lView[DECLARATION_VIEW]); }
+  get childHead(): LViewDebug|LContainerDebug|null { return toDebug(this._raw_lView[CHILD_HEAD]); }
+  get next(): LViewDebug|LContainerDebug|null { return toDebug(this._raw_lView[NEXT]); }
+  get childTail(): LViewDebug|LContainerDebug|null { return toDebug(this._raw_lView[CHILD_TAIL]); }
+  get declarationView(): LViewDebug|null { return toDebug(this._raw_lView[DECLARATION_VIEW]); }
   get queries(): LQueries|null { return this._raw_lView[QUERIES]; }
-  get tHost() { return this._raw_lView[T_HOST]; }
+  get tHost(): TViewNode|TElementNode|null { return this._raw_lView[T_HOST]; }
 
   /**
    * Normalized view of child views (and containers) attached at this location.
